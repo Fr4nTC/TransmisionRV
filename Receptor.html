@@ -2,47 +2,38 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Visor VR - Receptor</title>
+    <title>Visor VR Estático - Receptor</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <a-scene>
+    <!-- Desactivamos el movimiento de la cámara con look-controls: false -->
+    <a-scene xr-mode-ui="enabled: true">
         <a-assets>
             <video id="remoteVideo" autoplay playsinline crossorigin="anonymous"></video>
         </a-assets>
 
-        <!-- Pantalla de video flotante en el mundo VR -->
-        <a-video src="#remoteVideo" 
-                 position="0 1.6 -2.5" 
-                 width="4" 
-                 height="2.25" 
-                 rotation="0 0 0">
-        </a-video>
+        <!-- La cámara ahora contiene al video, así el video siempre está frente a los ojos -->
+        <a-entity camera look-controls="enabled: false">
+            <a-video src="#remoteVideo" 
+                     position="0 0 -1" 
+                     width="2" 
+                     height="1.12">
+            </a-video>
+        </a-entity>
 
-        <!-- Fondo negro puro para pantallas AMOLED (como la de tu Redmi) -->
         <a-sky color="#000000"></a-sky>
-        
-        <a-entity camera look-controls></a-entity>
     </a-scene>
 
     <script>
-        // Definimos el ID fijo para que el emisor nos encuentre
         const peer = new Peer('redmi-vr-receptor');
 
-        peer.on('open', (id) => {
-            console.log('ID de receptor listo: ' + id);
-        });
-
         peer.on('call', (call) => {
-            // Contestamos la llamada automáticamente
             call.answer(); 
-            
             call.on('stream', (remoteStream) => {
                 const video = document.getElementById('remoteVideo');
                 video.srcObject = remoteStream;
                 video.play();
-                console.log("Recibiendo señal de video...");
             });
         });
     </script>
