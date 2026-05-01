@@ -2,37 +2,85 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Emisor VR - Cámara</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emisor VR - Cámara Frontal</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #222; color: white; }
-        video { width: 80%; border-radius: 10px; margin-top: 20px; }
-        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+        body { font-family: sans-serif; text-align: center; background: #222; color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        video { width: 90%; max-width: 600px; border-radius: 10px; margin-top: 20px; background: #000; transform: scaleX(-1); /* Efecto espejo para la frontal */ }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: background 0.3s; }
+        button:hover { background: #218838; }
+        #status { margin-top: 10px; font-size: 14px; color: #aaa; }
     </style>
 </head>
 <body>
-    <h1>Dispositivo Emisor</h1>
-    <p>Presiona el botón para empezar a transmitir al Redmi.</p>
-    <button onclick="iniciarTransmision()">Transmitir Cámara</button>
-    <br>
+    <h1>Emisor VR</h1>
+    <p>Dispositivo de Cámara</p>
+    
+    <button id="btnTransmitir">Iniciar Transmisión Frontal</button>
+    <p id="status">Listo para conectar...</p>
+    
     <video id="localVideo" autoplay playsinline muted></video>
 
     <script>
-        // El ID 'redmi-vr-receptor' debe coincidir con el del otro archivo
         const peer = new Peer('dispositivo-emisor');
+        const btnTransmitir = document.getElementById('btnTransmitir');
+        const statusText = document.getElementById('status');
+
+        btnTransmitir.addEventListener('click', iniciarTransmision);
 
         function iniciarTransmision() {
-            navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user" }, // "user" para cámara frontal
+            statusText.innerText = "Solicitando permisos...";
+            
+            // INTENTO DE FORZAR HORIZONTAL
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(err => {
+                    console.log("No se pudo bloquear la orientación (normal en algunos navegadores):", err);
+                    statusText.innerText += " (Gira el teléfono manualmente)";
+                });
+            }
+
+            // Opciones de video AGRESIVAS para cámara frontal
+            const constraints = { 
+                video: { 
+                    facingMode: { exact: "user" }, // FUERZA LA FRONTAL O FALLA
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }, 
                 audio: false 
-            })
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
             .then((stream) => {
+                statusText.innerText = "Cámara capturada. Conectando con visor...";
+                btnTransmitir.style.display = 'none'; // Ocultar botón
+                
                 document.getElementById('localVideo').srcObject = stream;
+                
                 // Llamamos al receptor
                 const call = peer.call('redmi-vr-receptor', stream);
-                alert("Conectando con el visor...");
+                
+                call.on('stream', () => {
+                    statusText.innerText = "¡Transmisión activa!";
+                    statusText.style.color = "#28a745";
+                });
             })
-            .catch(err => console.error("Error al acceder a la cámara:", err));
+            .catch(err => {
+                console.error("Error:", err);
+                statusText.innerText = "Error: No se pudo forzar la cámara frontal. Asegúrate de estar en HTTPS.";
+                statusText.style.color = "#dc3545";
+                
+                // Intento de respaldo si falla el forzado exacto
+                if(err.name === 'OverconstrainedError') {
+                    statusText.innerText = "Reintentando con modo no exacto...";
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+                    .then(stream => {
+                        document.getElementById('localVideo').srcObject = stream;
+                        peer.call('redmi-vr-receptor', stream);
+                        statusText.innerText = "Transmisión activa (respaldo).";
+                    });
+                }
+            });
         }
     </script>
 </body>
