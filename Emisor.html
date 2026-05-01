@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Emisor VR - Cámara</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #222; color: white; }
+        video { width: 80%; border-radius: 10px; margin-top: 20px; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Dispositivo Emisor</h1>
+    <p>Presiona el botón para empezar a transmitir al Redmi.</p>
+    <button onclick="iniciarTransmision()">Transmitir Cámara</button>
+    <br>
+    <video id="localVideo" autoplay playsinline muted></video>
+
+    <script>
+        // El ID 'redmi-vr-receptor' debe coincidir con el del otro archivo
+        const peer = new Peer('dispositivo-emisor');
+
+        function iniciarTransmision() {
+            navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user" }, // "user" para cámara frontal
+                audio: false 
+            })
+            .then((stream) => {
+                document.getElementById('localVideo').srcObject = stream;
+                // Llamamos al receptor
+                const call = peer.call('redmi-vr-receptor', stream);
+                alert("Conectando con el visor...");
+            })
+            .catch(err => console.error("Error al acceder a la cámara:", err));
+        }
+    </script>
+</body>
+</html>
