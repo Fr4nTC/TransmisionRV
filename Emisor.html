@@ -3,36 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emisor VR - Horizontal</title>
+    <title>Emisor VR - 360p Horizontal</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #000; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        video { width: 80%; border: 2px solid #333; border-radius: 8px; background: #111; }
-        button { padding: 20px 40px; font-size: 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 10px; font-weight: bold; }
-        #status { margin-top: 15px; color: #00ff00; font-family: monospace; }
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            background: #000; 
+            color: white; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+        video { 
+            width: 70%; 
+            border: 2px solid #333; 
+            border-radius: 8px; 
+            background: #111; 
+            margin-top: 15px;
+        }
+        button { 
+            padding: 20px 40px; 
+            font-size: 18px; 
+            cursor: pointer; 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            border-radius: 10px; 
+            font-weight: bold; 
+        }
+        #status { 
+            margin-top: 15px; 
+            color: #00ff00; 
+            font-family: monospace; 
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
-    <button id="btnTransmitir">INICIAR EN HORIZONTAL</button>
-    <p id="status">Esperando...</p>
+
+    <button id="btnTransmitir">INICIAR TRANSMISIÓN (360p)</button>
+    <p id="status">Estado: Listo para conectar</p>
     <video id="localVideo" autoplay playsinline muted></video>
 
     <script>
+        // ID único para que el Redmi nos encuentre
         const peer = new Peer('dispositivo-emisor');
         const btnTransmitir = document.getElementById('btnTransmitir');
+        const statusText = document.getElementById('status');
 
         btnTransmitir.addEventListener('click', () => {
-            // 1. Intentar bloquear la pantalla en horizontal (Landscape)
+            statusText.innerText = "Estado: Solicitando cámara...";
+
+            // Intentar bloquear orientación horizontal
             if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(e => console.log("Gira el cel manualmente"));
+                screen.orientation.lock('landscape').catch(() => {
+                    console.log("Bloqueo de orientación no soportado.");
+                });
             }
 
-            // 2. Configurar resolución HORIZONTAL (Ancho > Alto)
+            // Configuración optimizada para ahorro de datos (360p)
             const constraints = { 
                 video: { 
-                    facingMode: "environment",
-                    width: { min: 1280, ideal: 1920 }, // Forzamos formato panorámico
-                    height: { min: 720, ideal: 1080 } 
+                    facingMode: "environment", // Cámara trasera
+                    width: { ideal: 640 }, 
+                    height: { ideal: 360 },
+                    frameRate: { ideal: 24 } // Menos frames = menos consumo
                 }, 
                 audio: false 
             };
@@ -42,13 +82,15 @@
                 const videoEl = document.getElementById('localVideo');
                 videoEl.srcObject = stream;
                 
-                // Llamada al receptor de tu Redmi
-                peer.call('redmi-vr-receptor', stream);
-                document.getElementById('status').innerText = "TRANSMITIENDO EN HORIZONTAL";
-                btnTransmitir.style.display = 'none';
+                // Conectar con el receptor (Tu Redmi Note 13 Pro)
+                const call = peer.call('redmi-vr-receptor', stream);
+                
+                statusText.innerText = "Estado: TRANSMITIENDO EN VIVO";
+                btnTransmitir.style.display = 'none'; // Ocultar botón al conectar
             })
             .catch(err => {
-                alert("Error: Asegúrate de girar el teléfono a horizontal antes de pulsar.");
+                statusText.innerText = "Error: No se pudo acceder a la cámara.";
+                statusText.style.color = "#ff4444";
                 console.error(err);
             });
         });
